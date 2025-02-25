@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-mono antialiased bg-black text-foreground;
+  }
+}
+
+@keyframes glow {
+  0%, 100% { 
+    text-shadow: 0 0 5px rgba(255,255,255,0.8);
+  }
+  50% { 
+    text-shadow: 0 0 15px rgba(255,255,255,0.8);
+  }
+}
+
+.text-glow {
+  animation: glow 2s ease-in-out infinite;
+}
