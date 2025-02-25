@@ -1,7 +1,5 @@
 
-import React, { useEffect, useRef, useState } from 'react';
-import { Card } from './ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { useEffect, useRef, useState } from 'react';
 
 interface WeatherMapProps {
   weather: any;
@@ -11,6 +9,10 @@ interface WeatherMapProps {
 export default function WeatherMap({ weather, location }: WeatherMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [activeTab, setActiveTab] = useState('temp');
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!weather || !canvasRef.current) return;
@@ -22,124 +24,140 @@ export default function WeatherMap({ weather, location }: WeatherMapProps) {
     canvas.width = canvas.offsetWidth;
     canvas.height = canvas.offsetHeight;
 
-    const dotSize = 2;
-    const spacing = 10;
-    const cols = Math.floor(canvas.width / spacing);
-    const rows = Math.floor(canvas.height / spacing);
+    const handleMouseDown = (e: MouseEvent) => {
+      setIsDragging(true);
+      setLastPos({ x: e.clientX, y: e.clientY });
+    };
 
-    const animate = () => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDragging) {
+        const dx = e.clientX - lastPos.x;
+        const dy = e.clientY - lastPos.y;
+        setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+        setLastPos({ x: e.clientX, y: e.clientY });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    canvas.addEventListener('mousedown', handleMouseDown);
+    canvas.addEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseup', handleMouseUp);
+    canvas.addEventListener('mouseleave', handleMouseUp);
+
+    const drawMatrix = () => {
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw base dot matrix
-      for (let y = 0; y < rows; y++) {
-        for (let x = 0; x < cols; x++) {
-          const xPos = x * spacing;
-          const yPos = y * spacing;
-          
+      const baseSpacing = 20;
+      const spacing = baseSpacing * zoom;
+      const cols = Math.ceil(canvas.width / spacing) + 1;
+      const rows = Math.ceil(canvas.height / spacing) + 1;
+
+      const offsetX = pan.x % spacing;
+      const offsetY = pan.y % spacing;
+
+      for (let y = -1; y < rows; y++) {
+        for (let x = -1; x < cols; x++) {
+          const xPos = x * spacing + offsetX;
+          const yPos = y * spacing + offsetY;
+          const distFromCenter = Math.sqrt(
+            Math.pow((xPos - canvas.width/2), 2) + 
+            Math.pow((yPos - canvas.height/2), 2)
+          );
+
           const time = Date.now() / 1000;
-          const windSpeed = weather.current.wind_speed || 0;
-          const windOffset = Math.sin(time + x * 0.2 + y * 0.3) * (windSpeed / 10);
-          
+          const windEffect = weather.current?.wind_speed 
+            ? Math.sin(time + x * 0.2) * (weather.current.wind_speed / 10)
+            : 0;
+
+          let dotSize = Math.max(1, 4 * zoom);
           let dotColor;
+
           if (activeTab === 'temp') {
-            const temp = weather.current.temp;
+            const temp = weather.current?.temp || 0;
             const hue = Math.max(0, Math.min(240, (100 - temp) * 2.4));
-            dotColor = `hsl(${hue}, 70%, ${50 + Math.sin(time + x * 0.1) * 20}%)`;
+            dotColor = `hsla(${hue}, 70%, 50%, ${0.7 - distFromCenter/1000})`;
+            dotSize *= 1.5;
           } else if (activeTab === 'rain') {
-            const opacity = weather.current.rain ? 
-              (0.3 + Math.sin(time + x * 0.2 + y * 0.2) * 0.2) : 0.2;
-            dotColor = `rgba(0, 100, 255, ${opacity})`;
+            const rainIntensity = weather.current?.rain ? 0.8 : 0.2;
+            const blue = Math.sin(time + x * 0.1 + y * 0.1) * 50 + 200;
+            dotColor = `rgba(0, ${blue}, 255, ${rainIntensity})`;
           } else if (activeTab === 'wind') {
-            const opacity = 0.3 + Math.sin(time + x * 0.1 + y * 0.1) * 0.2;
-            dotColor = `rgba(150, 150, 150, ${opacity})`;
+            const windSpeed = weather.current?.wind_speed || 0;
+            const intensity = 0.3 + Math.sin(time + x * 0.1 + windEffect) * 0.2;
+            dotColor = `rgba(200, 200, 200, ${intensity * (windSpeed/10)})`;
           }
 
-          ctx.fillStyle = dotColor || '#666';
-          ctx.fillRect(xPos + windOffset, yPos, dotSize, dotSize);
-        }
-      }
-
-      // Draw roads (white dots)
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-      for (let i = 0; i < canvas.width; i += spacing * 2) {
-        for (let y = 0; y < canvas.height; y += spacing) {
-          ctx.fillRect(i, y, dotSize, dotSize);
-        }
-      }
-      for (let i = 0; i < canvas.height; i += spacing * 2) {
-        for (let x = 0; x < canvas.width; x += spacing) {
-          ctx.fillRect(x, i, dotSize, dotSize);
-        }
-      }
-
-      // Draw city names and markers
-      ctx.font = '12px monospace';
-      ctx.fillStyle = '#fff';
-      ctx.textAlign = 'center';
-      
-      if (weather.nearby) {
-        weather.nearby.forEach((city: any, i: number) => {
-          const angle = (i * Math.PI * 2) / weather.nearby.length;
-          const distance = Math.min(canvas.width, canvas.height) / 3;
-          const x = canvas.width/2 + Math.cos(angle) * distance;
-          const y = canvas.height/2 + Math.sin(angle) * distance;
-
-          // City dot
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
           ctx.beginPath();
-          ctx.arc(x, y, 3, 0, Math.PI * 2);
+          ctx.arc(xPos, yPos, dotSize/2, 0, Math.PI * 2);
+          ctx.fillStyle = dotColor || '#666';
           ctx.fill();
-
-          // City name
-          ctx.fillStyle = '#fff';
-          ctx.fillText(city.name, x, y - 10);
-        });
+        }
       }
 
-      // Draw user location
-      if (location) {
-        ctx.fillStyle = '#00ff00';
-        ctx.beginPath();
-        ctx.arc(canvas.width/2, canvas.height/2, 4, 0, Math.PI * 2);
-        ctx.fill();
-      }
+      // Draw city center marker
+      ctx.beginPath();
+      ctx.arc(canvas.width/2, canvas.height/2, 8 * zoom, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
 
-      // Draw wind direction (subtle dots instead of line)
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-      const windAngle = (weather.current.wind_deg || 0) * (Math.PI / 180);
-      const radius = Math.min(canvas.width, canvas.height) / 4;
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-      for (let i = 0; i < radius; i += spacing) {
-        const x = centerX + Math.cos(windAngle) * i;
-        const y = centerY + Math.sin(windAngle) * i;
-        ctx.beginPath();
-        ctx.arc(x, y, 1, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      requestAnimationFrame(animate);
+      requestAnimationFrame(drawMatrix);
     };
 
-    animate();
-  }, [weather, activeTab, location]);
+    const animId = requestAnimationFrame(drawMatrix);
+    return () => {
+      cancelAnimationFrame(animId);
+      canvas.removeEventListener('mousedown', handleMouseDown);
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mouseup', handleMouseUp);
+      canvas.removeEventListener('mouseleave', handleMouseUp);
+    };
+  }, [weather, activeTab, zoom, pan, isDragging, lastPos]);
 
   return (
-    <Card className="p-4 bg-black/30 backdrop-blur-lg border-gray-800/50">
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 bg-black/50">
-          <TabsTrigger value="temp">TEMP</TabsTrigger>
-          <TabsTrigger value="rain">RAIN</TabsTrigger>
-          <TabsTrigger value="wind">WIND</TabsTrigger>
-        </TabsList>
-      </Tabs>
+    <div className="relative w-full h-[400px] bg-black rounded-lg overflow-hidden">
+      <div className="absolute top-4 left-4 flex gap-2 z-10">
+        <button 
+          className={`px-4 py-1 rounded ${activeTab === 'temp' ? 'bg-white text-black' : 'text-white'}`}
+          onClick={() => setActiveTab('temp')}
+        >
+          TEMP
+        </button>
+        <button 
+          className={`px-4 py-1 rounded ${activeTab === 'rain' ? 'bg-white text-black' : 'text-white'}`}
+          onClick={() => setActiveTab('rain')}
+        >
+          RAIN
+        </button>
+        <button 
+          className={`px-4 py-1 rounded ${activeTab === 'wind' ? 'bg-white text-black' : 'text-white'}`}
+          onClick={() => setActiveTab('wind')}
+        >
+          WIND
+        </button>
+      </div>
+      <div className="absolute top-4 right-4 flex gap-2 z-10">
+        <button 
+          className="px-2 py-1 text-white"
+          onClick={() => setZoom(z => Math.max(0.5, z - 0.1))}
+        >
+          -
+        </button>
+        <button 
+          className="px-2 py-1 text-white"
+          onClick={() => setZoom(z => Math.min(2, z + 0.1))}
+        >
+          +
+        </button>
+      </div>
       <canvas 
-        ref={canvasRef}
-        className="w-full h-[300px] mt-4 rounded-lg"
-        style={{ imageRendering: 'pixelated' }}
+        ref={canvasRef} 
+        className="w-full h-full"
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       />
-    </Card>
+    </div>
   );
 }
