@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import React, { useEffect, useRef, useState } from 'react';
+import { Card } from './ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 
 interface WeatherMapProps {
   weather: any;
@@ -12,137 +12,69 @@ export default function WeatherMap({ weather, location }: WeatherMapProps) {
   const [activeTab, setActiveTab] = useState('temp');
   const [districts, setDistricts] = useState<any[]>([]);
 
-  // Generate random districts based on weather data
   useEffect(() => {
-    if (!weather || !location) return;
-
-    const generateDistricts = () => {
-      const newDistricts = [];
-      const citySize = 20;
-
-      for (let i = 0; i < citySize; i++) {
-        newDistricts.push({
-          x: Math.random() * 100,
-          y: Math.random() * 100,
-          temp: weather.current.temp + (Math.random() * 6 - 3),
-          wind: weather.current.wind_speed * (0.5 + Math.random()),
-          rain: weather.current.rain ? Math.random() * 100 : 0
-        });
-      }
-      return newDistricts;
-    };
-
-    setDistricts(generateDistricts());
-  }, [weather, location]);
-
-  // Render map
-  useEffect(() => {
-    if (!canvasRef.current || !weather) return;
+    if (!weather || !location || !canvasRef.current) return;
 
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const render = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Set canvas size
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
 
-      // Draw grid
-      ctx.strokeStyle = '#333';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < canvas.width; i += 20) {
-        ctx.beginPath();
-        ctx.moveTo(i, 0);
-        ctx.lineTo(i, canvas.height);
-        ctx.stroke();
-      }
-      for (let i = 0; i < canvas.height; i += 20) {
-        ctx.beginPath();
-        ctx.moveTo(0, i);
-        ctx.lineTo(canvas.width, i);
-        ctx.stroke();
-      }
+    // Clear canvas
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw districts
-      districts.forEach(district => {
-        const x = (district.x / 100) * canvas.width;
-        const y = (district.y / 100) * canvas.height;
+    // Draw weather visualization
+    const drawWeatherMap = () => {
+      const dotSize = 2;
+      const spacing = 15;
+      const rows = Math.floor(canvas.height / spacing);
+      const cols = Math.floor(canvas.width / spacing);
 
-        ctx.fillStyle = getDistrictColor(district);
-        ctx.beginPath();
-        ctx.arc(x, y, 8, 0, Math.PI * 2);
-        ctx.fill();
-      });
-    };
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const xPos = x * spacing;
+          const yPos = y * spacing;
 
-    const getDistrictColor = (district: any) => {
-      switch (activeTab) {
-        case 'temp':
-          const tempScale = (district.temp - 32) / 40; // normalize around freezing
-          return `hsl(${240 - tempScale * 240}, 70%, 50%)`;
-        case 'wind':
-          const windScale = district.wind / 20;
-          return `hsl(160, ${windScale * 100}%, 50%)`;
-        case 'rain':
-          const rainScale = district.rain / 100;
-          return `hsl(200, ${rainScale * 100}%, 50%)`;
-        default:
-          return '#fff';
-      }
-    };
-
-    render();
-
-    // Add weather effects
-    if (weather.current.condition.toLowerCase().includes('rain')) {
-      const raindrops: any[] = [];
-
-      const addRaindrop = () => {
-        raindrops.push({
-          x: Math.random() * canvas.width,
-          y: 0,
-          speed: 5 + Math.random() * 10
-        });
-      };
-
-      const animateRain = () => {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        if (raindrops.length < 100) addRaindrop();
-
-        raindrops.forEach((drop, i) => {
-          ctx.fillStyle = '#6af';
-          ctx.fillRect(drop.x, drop.y, 1, 4);
-          drop.y += drop.speed;
-
-          if (drop.y > canvas.height) {
-            raindrops.splice(i, 1);
+          // Different visualizations based on active tab
+          if (activeTab === 'temp') {
+            const temp = weather.current.temp;
+            const hue = Math.max(0, Math.min(240, (100 - temp) * 2.4));
+            ctx.fillStyle = `hsl(${hue}, 80%, 50%)`;
+          } else if (activeTab === 'rain') {
+            const opacity = weather.current.rain ? 0.7 : 0.2;
+            ctx.fillStyle = `rgba(0, 100, 255, ${opacity})`;
+          } else if (activeTab === 'wind') {
+            const windSpeed = weather.current.wind_speed;
+            const offset = Math.sin(Date.now() / 1000 + x + y) * (windSpeed / 10);
+            ctx.fillStyle = `rgba(150, 150, 150, 0.7)`;
+            ctx.fillRect(xPos + offset, yPos, dotSize, dotSize);
+            continue;
           }
-        });
 
-        requestAnimationFrame(animateRain);
-      };
+          ctx.fillRect(xPos, yPos, dotSize, dotSize);
+        }
+      }
+    };
 
-      animateRain();
-    }
+    const animate = () => {
+      drawWeatherMap();
+      requestAnimationFrame(animate);
+    };
 
-    const handleResize = () => render();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [weather, districts, activeTab]);
-
-  if (!weather || !location) return null;
+    animate();
+  }, [weather, location, activeTab]);
 
   return (
     <Card className="p-4 bg-black/30 backdrop-blur-lg border-gray-800/50">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3 bg-black/50">
-          <TabsTrigger value="temp">Temperature</TabsTrigger>
-          <TabsTrigger value="wind">Wind Speed</TabsTrigger>
-          <TabsTrigger value="rain">Precipitation</TabsTrigger>
+          <TabsTrigger value="temp">TEMP</TabsTrigger>
+          <TabsTrigger value="rain">RAIN</TabsTrigger>
+          <TabsTrigger value="wind">WIND</TabsTrigger>
         </TabsList>
         <TabsContent value="temp">
         </TabsContent>
@@ -151,14 +83,11 @@ export default function WeatherMap({ weather, location }: WeatherMapProps) {
         <TabsContent value="rain">
         </TabsContent>
       </Tabs>
-
-      <div className="mt-4 relative aspect-video">
-        <canvas 
-          ref={canvasRef} 
-          className="w-full h-full rounded-md"
-          style={{ imageRendering: 'pixelated' }}
-        />
-      </div>
+      <canvas 
+        ref={canvasRef}
+        className="w-full h-[300px] mt-4"
+        style={{ imageRendering: 'pixelated' }}
+      />
     </Card>
   );
 }
