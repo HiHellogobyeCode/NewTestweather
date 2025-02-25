@@ -45,8 +45,13 @@ export default function WeatherMap({ weather, lat, lon }: WeatherMapProps) {
     // Initialize particles for weather effects
     const initParticles = () => {
       particles = [];
-      const count = (mode === 'precipitation' && weather.current.precipitation > 0) ? 100 : 
-                    (mode === 'wind' && weather.current.windSpeed > 5) ? 50 : 0;
+      let count = 0;
+
+      if (mode === 'precipitation' && weather?.current?.precipitation > 0) {
+        count = 100;
+      } else if (mode === 'wind' && weather?.current?.windSpeed > 5) {
+        count = 50;
+      }
 
       for (let i = 0; i < count; i++) {
         particles.push({
@@ -78,6 +83,7 @@ export default function WeatherMap({ weather, lat, lon }: WeatherMapProps) {
       const pos = latLonToCanvas(lat, lon);
 
       // Draw base map dots
+      const spacing = 8;
       for (let x = 0; x < canvas.width; x += spacing) {
         for (let y = 0; y < canvas.height; y += spacing) {
           ctx.fillStyle = '#333333';
@@ -98,21 +104,12 @@ export default function WeatherMap({ weather, lat, lon }: WeatherMapProps) {
         let color = '#666666';
         const intensity = Math.random() * 0.3 + 0.7;
 
-        switch (mode) {
-          case 'precipitation':
-            // Only show if there's precipitation
-            if (weather.current.precipitation > 0) {
-              shouldShow = true;
-              color = `rgba(0,128,255,${intensity * 0.7})`;
-            }
-            break;
-          case 'wind':
-            // Only show if wind speed > 5mph
-            if (weather.current.windSpeed > 5) {
-              shouldShow = true;
-              color = `rgba(128,255,128,${intensity * 0.7})`;
-            }
-            break;
+        if (mode === 'precipitation' && weather?.current?.precipitation > 0) {
+          shouldShow = true;
+          color = `rgba(0,128,255,${intensity * 0.7})`;
+        } else if (mode === 'wind' && weather?.current?.windSpeed > 5) {
+          shouldShow = true;
+          color = `rgba(128,255,128,${intensity * 0.7})`;
         }
 
         if (shouldShow) {
