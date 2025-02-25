@@ -34,13 +34,14 @@ export default function LocationSearch({ onLocationSelect }: LocationSearchProps
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           searchQuery
-        )}&countrycodes=us&limit=10`
+        )}&countrycodes=us&limit=10&addressdetails=1`,
+        { headers: { 'User-Agent': 'DotMatrixWeather/1.0' } }
       );
       const data = await response.json();
       
-      // Filter for cities/towns and sort by importance (correlates with population)
       const cityResults = data
-        .filter((loc: Location) => loc.class === 'place' && ['city', 'town'].includes(loc.type))
+        .filter((loc: any) => 
+          (loc.type === 'city' || loc.type === 'town' || loc.type === 'administrative'))
         .sort((a: Location, b: Location) => b.importance - a.importance)
         .slice(0, 5);
         
