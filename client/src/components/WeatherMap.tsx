@@ -16,7 +16,7 @@ interface WeatherMapProps {
 
 type MapMode = 'precipitation' | 'wind' | 'temperature';
 
-export default function WeatherMap({ lat, lon }: WeatherMapProps) {
+export default function WeatherMap(props: WeatherMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mode, setMode] = useState<MapMode>('precipitation');
   const [zoom, setZoom] = useState(1);
@@ -58,8 +58,8 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
     // Initialize particles for weather effects
     const initParticles = () => {
       particles = [];
-      const count = (mode === 'precipitation' && weather?.current?.precipitation > 0) ? 100 : 
-                    (mode === 'wind' && weather?.current?.windSpeed > 5) ? 50 : 0;
+      const count = (mode === 'precipitation' && props.weather?.current?.precipitation > 0) ? 100 : 
+                    (mode === 'wind' && props.weather?.current?.windSpeed > 5) ? 50 : 0;
 
       for (let i = 0; i < count; i++) {
         particles.push({
@@ -120,14 +120,14 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
           switch (mode) {
             case 'precipitation':
               // Only show if there's precipitation
-              if (weatherData?.precipitation > 0) {
+              if (props.weather?.current?.precipitation > 0) {
                 shouldShow = true;
                 color = `rgba(0,128,255,${intensity * 0.7})`;
               }
               break;
             case 'wind':
               // Only show if wind speed > 5mph
-              if (weatherData?.windSpeed > 5) {
+              if (props.weather?.current?.windSpeed > 5) {
                 shouldShow = true;
                 color = `rgba(128,255,128,${intensity * 0.7})`;
               }
@@ -230,7 +230,7 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
       canvas.removeEventListener('wheel', handleWheel);
       cancelAnimationFrame(animId);
     };
-  }, [lat, lon, mode, zoom, offset, isDragging, dragStart]);
+  }, [props.lat, props.lon, mode, zoom, offset, isDragging, dragStart]);
 
   return (
     <Card className="p-4 bg-black/30 backdrop-blur-lg border-gray-800/50">
