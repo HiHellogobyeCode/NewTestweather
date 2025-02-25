@@ -34,10 +34,17 @@ export default function LocationSearch({ onLocationSelect }: LocationSearchProps
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           searchQuery
-        )}&limit=5`
+        )}&countrycodes=us&limit=10`
       );
       const data = await response.json();
-      setSuggestions(data);
+      
+      // Filter for cities/towns and sort by importance (correlates with population)
+      const cityResults = data
+        .filter((loc: Location) => loc.class === 'place' && ['city', 'town'].includes(loc.type))
+        .sort((a: Location, b: Location) => b.importance - a.importance)
+        .slice(0, 5);
+        
+      setSuggestions(cityResults);
     } catch (error) {
       console.error('Failed to fetch locations:', error);
       setSuggestions([]);
