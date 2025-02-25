@@ -1,22 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { CloudRain, Wind, Thermometer, Maximize } from 'lucide-react';
+import { Card } from './ui/card';
+import { Weather } from '@/types';
 
-interface WeatherMapProps {
+type WeatherMapProps = {
+  weather: Weather;
   lat: number;
   lon: number;
-  weather: {
-    current: {
-      precipitation?: number;
-      windSpeed?: number;
-    };
-  };
-}
+};
+
+type Particle = {
+  x: number;
+  y: number;
+  speed: number;
+  angle: number;
+};
 
 type MapMode = 'precipitation' | 'wind' | 'temperature';
 
-export default function WeatherMap(props: WeatherMapProps) {
+export default function WeatherMap({ weather, lat, lon }: WeatherMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [mode, setMode] = useState<MapMode>('precipitation');
   const [zoom, setZoom] = useState(1);
@@ -24,11 +25,7 @@ export default function WeatherMap(props: WeatherMapProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-  // Reset view function
-  const resetView = () => {
-    setZoom(1);
-    setOffset({ x: 0, y: 0 });
-  };
+  let particles: Particle[] = [];
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -37,168 +34,117 @@ export default function WeatherMap(props: WeatherMapProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Set canvas size
     const resize = () => {
       canvas.width = canvas.clientWidth;
       canvas.height = canvas.clientHeight;
     };
-
     resize();
     window.addEventListener('resize', resize);
-
-    // USA boundaries (approximate)
-    const USA = {
-      minLat: 24.396308,
-      maxLat: 49.384358,
-      minLon: -125.000000,
-      maxLon: -66.934570
-    };
-
-    let particles: Array<{x: number; y: number; speed: number; angle: number}> = [];
 
     // Initialize particles for weather effects
     const initParticles = () => {
       particles = [];
-      const count = (mode === 'precipitation' && props.weather?.current?.precipitation > 0) ? 100 : 
-                    (mode === 'wind' && props.weather?.current?.windSpeed > 5) ? 50 : 0;
+      const count = (mode === 'precipitation' && weather.current.precipitation > 0) ? 100 : 
+                    (mode === 'wind' && weather.current.windSpeed > 5) ? 50 : 0;
 
       for (let i = 0; i < count; i++) {
         particles.push({
           x: Math.random() * canvas.width,
           y: Math.random() * canvas.height,
           speed: Math.random() * 2 + 1,
-          angle: mode === 'wind' ? Math.PI / 4 : Math.PI / 2 // Wind direction or straight down
+          angle: mode === 'wind' ? Math.PI * 0.25 : Math.PI * 0.5
         });
       }
     };
 
-    initParticles();
-
     // Convert lat/lon to canvas coordinates
     const latLonToCanvas = (lat: number, lon: number) => {
-      const x = ((lon - USA.minLon) / (USA.maxLon - USA.minLon)) * canvas.width;
-      const y = canvas.height - ((lat - USA.minLat) / (USA.maxLat - USA.minLat)) * canvas.height;
+      const x = (lon + 180) * (canvas.width / 360);
+      const y = (-lat + 90) * (canvas.height / 180);
       return { x, y };
     };
 
-    // Draw dot matrix effect for the map
+    // Draw matrix effect
     const drawMatrix = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      const spacing = 6; // Smaller spacing for more detailed map
-      const radius = 120; // Larger radius for effect
-
-      // Apply zoom and pan transformation
       ctx.save();
       ctx.translate(offset.x, offset.y);
       ctx.scale(zoom, zoom);
 
       // Current location marker
-      const pos = latLonToCanvas(props.lat, props.lon);
+      const pos = latLonToCanvas(lat, lon);
 
       // Draw base map dots
       for (let x = 0; x < canvas.width; x += spacing) {
         for (let y = 0; y < canvas.height; y += spacing) {
-          // Convert canvas coordinates back to lat/lon
-          const currentLon = USA.minLon + (x / canvas.width) * (USA.maxLon - USA.minLon);
-          const currentLat = USA.minLat + ((canvas.height - y) / canvas.height) * (USA.maxLat - USA.minLat);
-
-          // Skip points outside the USA boundaries
-          if (currentLat < USA.minLat || currentLat > USA.maxLat || 
-              currentLon < USA.minLon || currentLon > USA.maxLon) {
-            continue;
-          }
-
-          const dx = x - pos.x;
-          const dy = y - pos.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          // Only show effects for rain or high wind
-          let shouldShow = false;
-          let color;
-          let intensity = Math.max(0, 1 - (dist / (radius * zoom)));
-
-          switch (mode) {
-            case 'precipitation':
-              // Only show if there's precipitation
-              if (props.weather?.current?.precipitation > 0) {
-                shouldShow = true;
-                color = `rgba(0,128,255,${intensity * 0.7})`;
-              }
-              break;
-            case 'wind':
-              // Only show if wind speed > 5mph
-              if (props.weather?.current?.windSpeed > 5) {
-                shouldShow = true;
-                color = `rgba(128,255,128,${intensity * 0.7})`;
-              }
-              break;
-            case 'temperature':
-              color = `rgba(255,128,0,${intensity * 0.7})`;
-              shouldShow = true;
-              break;
-          }
-
-          if (shouldShow) {
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(x, y, 1, 0, Math.PI * 2);
-            ctx.fill();
-          }
+          ctx.fillStyle = '#333333';
+          ctx.fillRect(x, y, 1, 1);
         }
       }
 
-      // Update and draw weather effect particles
-      particles.forEach(p => {
-        p.x += Math.cos(p.angle) * p.speed;
-        p.y += Math.sin(p.angle) * p.speed;
-
-        if (p.y > canvas.height) p.y = 0;
-        if (p.x > canvas.width) p.x = 0;
-        if (p.x < 0) p.x = canvas.width;
-
-        ctx.beginPath();
-        if (mode === 'precipitation') {
-          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-          ctx.lineWidth = 1;
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x, p.y + 4);
-        } else if (mode === 'wind') {
-          ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-          ctx.lineWidth = 1;
-          ctx.moveTo(p.x, p.y);
-          ctx.lineTo(p.x + Math.cos(p.angle) * 8, p.y + Math.sin(p.angle) * 8);
-        }
-        ctx.stroke();
-      });
-
-      // Draw current location marker
+      // Draw current location
+      ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff';
+      ctx.arc(pos.x, pos.y, 3, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = '#000';
-      ctx.lineWidth = 1;
-      ctx.stroke();
+
+      // Draw weather particles
+      ctx.fillStyle = '#666666';
+      particles.forEach(particle => {
+        let shouldShow = false;
+        let color = '#666666';
+        const intensity = Math.random() * 0.3 + 0.7;
+
+        switch (mode) {
+          case 'precipitation':
+            // Only show if there's precipitation
+            if (weather.current.precipitation > 0) {
+              shouldShow = true;
+              color = `rgba(0,128,255,${intensity * 0.7})`;
+            }
+            break;
+          case 'wind':
+            // Only show if wind speed > 5mph
+            if (weather.current.windSpeed > 5) {
+              shouldShow = true;
+              color = `rgba(128,255,128,${intensity * 0.7})`;
+            }
+            break;
+        }
+
+        if (shouldShow) {
+          ctx.fillStyle = color;
+          ctx.fillRect(particle.x, particle.y, 1, 1);
+
+          // Update particle position
+          particle.x += Math.cos(particle.angle) * particle.speed;
+          particle.y += Math.sin(particle.angle) * particle.speed;
+
+          // Wrap particles
+          if (particle.x < 0) particle.x = canvas.width;
+          if (particle.x > canvas.width) particle.x = 0;
+          if (particle.y < 0) particle.y = canvas.height;
+          if (particle.y > canvas.height) particle.y = 0;
+        }
+      });
 
       ctx.restore();
-      requestAnimationFrame(drawMatrix);
     };
 
+    // Handle mouse events
     const handleMouseDown = (e: MouseEvent) => {
       setIsDragging(true);
-      const rect = canvas.getBoundingClientRect();
-      setDragStart({ 
-        x: e.clientX - offset.x - rect.left,
-        y: e.clientY - offset.y - rect.top
-      });
+      setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
     };
 
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
-        const rect = canvas.getBoundingClientRect();
         setOffset({
-          x: e.clientX - dragStart.x - rect.left,
-          y: e.clientY - dragStart.y - rect.top
+          x: e.clientX - dragStart.x,
+          y: e.clientY - dragStart.y
         });
       }
     };
@@ -210,17 +156,30 @@ export default function WeatherMap(props: WeatherMapProps) {
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      setZoom(z => Math.max(1, Math.min(5, z * delta)));
+      setZoom(z => Math.max(0.5, Math.min(4, z * delta)));
     };
 
+    // Set up event listeners
     canvas.addEventListener('mousedown', handleMouseDown);
     canvas.addEventListener('mousemove', handleMouseMove);
     canvas.addEventListener('mouseup', handleMouseUp);
     canvas.addEventListener('mouseleave', handleMouseUp);
     canvas.addEventListener('wheel', handleWheel);
 
-    const animId = requestAnimationFrame(drawMatrix);
+    // Animation loop
+    let animId: number;
+    const spacing = 8;
 
+    const animate = () => {
+      drawMatrix();
+      animId = requestAnimationFrame(animate);
+    };
+
+    // Initialize particles and start animation
+    initParticles();
+    animId = requestAnimationFrame(animate);
+
+    // Cleanup
     return () => {
       window.removeEventListener('resize', resize);
       canvas.removeEventListener('mousedown', handleMouseDown);
@@ -230,57 +189,45 @@ export default function WeatherMap(props: WeatherMapProps) {
       canvas.removeEventListener('wheel', handleWheel);
       cancelAnimationFrame(animId);
     };
-  }, [props.lat, props.lon, mode, zoom, offset, isDragging, dragStart]);
+  }, [lat, lon, mode, zoom, offset, isDragging, dragStart, weather]);
 
   return (
     <Card className="p-4 bg-black/30 backdrop-blur-lg border-gray-800/50">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-mono text-glow-subtle">WEATHER MAP</h2>
-        <div className="flex gap-2">
-          <Button
-            variant={mode === 'precipitation' ? 'default' : 'outline'}
-            size="sm"
+        <div className="flex space-x-2">
+          <button
             onClick={() => setMode('precipitation')}
-            className="font-mono backdrop-blur-sm bg-gray-900/30 border-gray-700/50"
+            className={`px-3 py-1 border ${mode === 'precipitation' ? 'border-white bg-white/10' : 'border-gray-700'}`}
           >
-            <CloudRain className="h-4 w-4 mr-2" />
-            RAIN
-          </Button>
-          <Button
-            variant={mode === 'wind' ? 'default' : 'outline'}
-            size="sm"
+            Rain
+          </button>
+          <button
             onClick={() => setMode('wind')}
-            className="font-mono backdrop-blur-sm bg-gray-900/30 border-gray-700/50"
+            className={`px-3 py-1 border ${mode === 'wind' ? 'border-white bg-white/10' : 'border-gray-700'}`}
           >
-            <Wind className="h-4 w-4 mr-2" />
-            WIND
-          </Button>
-          <Button
-            variant={mode === 'temperature' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setMode('temperature')}
-            className="font-mono backdrop-blur-sm bg-gray-900/30 border-gray-700/50"
+            Wind
+          </button>
+        </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setZoom(z => Math.max(0.5, z - 0.1))}
+            className="w-8 h-8 flex items-center justify-center border border-gray-700"
           >
-            <Thermometer className="h-4 w-4 mr-2" />
-            TEMP
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={resetView}
-            className="font-mono backdrop-blur-sm bg-gray-900/30 border-gray-700/50"
+            -
+          </button>
+          <button
+            onClick={() => setZoom(z => Math.min(4, z + 0.1))}
+            className="w-8 h-8 flex items-center justify-center border border-gray-700"
           >
-            <Maximize className="h-4 w-4" />
-          </Button>
+            +
+          </button>
         </div>
       </div>
       <canvas
         ref={canvasRef}
-        className="w-full h-64 rounded border border-gray-800/30 cursor-move"
+        className="w-full h-64 bg-black rounded border border-gray-800"
+        style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
       />
-      <p className="text-xs text-gray-500 mt-2 text-center">
-        Scroll to zoom, drag to pan
-      </p>
     </Card>
   );
 }
