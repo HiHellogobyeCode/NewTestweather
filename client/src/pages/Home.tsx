@@ -18,7 +18,6 @@ export default function Home() {
 
   const handleSearch = async (query: string) => {
     try {
-      // Search location using OpenStreetMap Nominatim
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`,
         { headers: { 'User-Agent': 'DotMatrixWeather/1.0' } }
@@ -44,6 +43,10 @@ export default function Home() {
         variant: "destructive"
       });
     }
+  };
+
+  const handleLocationSelect = (lat: number, lon: number) => {
+    setLocation({ lat, lon });
   };
 
   useEffect(() => {
@@ -98,6 +101,7 @@ export default function Home() {
           unit={unit}
           onUnitChange={setUnit}
           onSearch={handleSearch}
+          onLocationSelect={handleLocationSelect}
         />
       </div>
     </div>

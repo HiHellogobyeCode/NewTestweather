@@ -1,0 +1,53 @@
+import { Card } from '@/components/ui/card';
+import { Cloud, Sun, CloudRain, Snowflake } from 'lucide-react';
+import { format } from 'date-fns';
+
+interface ForecastProps {
+  hourlyData: Array<{
+    time: string;
+    temp: number;
+    condition: string;
+  }>;
+  unit: string;
+}
+
+export default function ForecastDisplay({ hourlyData, unit }: ForecastProps) {
+  const WeatherIcon = {
+    'Clear': Sun,
+    'Clouds': Cloud,
+    'Rain': CloudRain,
+    'Snow': Snowflake
+  };
+
+  const formatTemp = (temp: number) => {
+    return unit === 'C' ? Math.round((temp - 32) * 5/9) : Math.round(temp);
+  };
+
+  return (
+    <Card className="p-4 bg-black/50 backdrop-blur-sm border-gray-800 mt-6">
+      <h2 className="text-lg font-mono mb-4 text-glow text-center">24-HOUR FORECAST</h2>
+      
+      <div className="grid grid-cols-6 gap-4 overflow-x-auto pb-2 md:grid-cols-8 lg:grid-cols-12">
+        {hourlyData.slice(0, 24).map((hour, i) => {
+          const Icon = WeatherIcon[hour.condition as keyof typeof WeatherIcon] || Sun;
+          const time = new Date(hour.time);
+          
+          return (
+            <div 
+              key={i}
+              className="flex flex-col items-center space-y-2 bg-gray-900/30 p-2 rounded border border-gray-800"
+            >
+              <span className="text-xs text-gray-500 font-mono">
+                {format(time, 'HH:mm')}
+              </span>
+              <Icon className="h-6 w-6 text-glow" />
+              <span className="text-sm font-mono text-glow">
+                {formatTemp(hour.temp)}°
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
