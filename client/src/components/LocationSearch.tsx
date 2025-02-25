@@ -34,18 +34,61 @@ export default function LocationSearch({ onLocationSelect }: LocationSearchProps
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
           searchQuery
-        )}&countrycodes=us&limit=10&addressdetails=1`,
+        )}&countrycodes=us&limit=15&addressdetails=1&featuretype=city&featuretype=state`,
         { headers: { 'User-Agent': 'DotMatrixWeather/1.0' } }
       );
       const data = await response.json();
       
-      const cityResults = data
-        .filter((loc: any) => 
-          (loc.type === 'city' || loc.type === 'town' || loc.type === 'administrative'))
-        .sort((a: Location, b: Location) => b.importance - a.importance)
+      // Process and enhance results
+      const processedResults = data
+        .filter((loc: any) => {
+          // Keep cities, towns, and major administrative areas
+          return (loc.type === 'city' || 
+                  loc.type === 'town' || 
+                  loc.type === 'administrative' ||
+                  loc.class === 'place');
+        })
+        .map((loc: any) => {
+          const address = loc.address || {};
+          const state = address.state || '';
+          const stateCode = getStateAbbreviation(state);
+          
+          // Calculate relevance score based on multiple factors
+          const relevanceScore = 
+            (loc.importance || 0) * 2 + // Base importance
+            (address.city ? 0.5 : 0) +  // Bonus for cities
+            (loc.class === 'place' ? 0.3 : 0) + // Bonus for places
+            (address.population ? Math.log(address.population) / 10 : 0); // Population factor
+            
+          return {
+            ...loc,
+            relevanceScore,
+            display_name: `${address.city || address.town || loc.display_name.split(',')[0]}, ${stateCode}`,
+            state: stateCode
+          };
+        })
+        .sort((a: any, b: any) => b.relevanceScore - a.relevanceScore)
         .slice(0, 5);
         
-      setSuggestions(cityResults);
+      setSuggestions(processedResults);
+
+      function getStateAbbreviation(state: string): string {
+        const stateMap: {[key: string]: string} = {
+          'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA',
+          'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE', 'Florida': 'FL', 'Georgia': 'GA',
+          'Hawaii': 'HI', 'Idaho': 'ID', 'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA',
+          'Kansas': 'KS', 'Kentucky': 'KY', 'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD',
+          'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS',
+          'Missouri': 'MO', 'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV',
+          'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+          'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK',
+          'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+          'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT',
+          'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA', 'West Virginia': 'WV',
+          'Wisconsin': 'WI', 'Wyoming': 'WY'
+        };
+        return stateMap[state] || state;
+      }
     } catch (error) {
       console.error('Failed to fetch locations:', error);
       setSuggestions([]);
