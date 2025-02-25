@@ -93,7 +93,7 @@ export default function WeatherMap(props: WeatherMapProps) {
       ctx.scale(zoom, zoom);
 
       // Current location marker
-      const pos = latLonToCanvas(lat, lon);
+      const pos = latLonToCanvas(props.lat, props.lon);
 
       // Draw base map dots
       for (let x = 0; x < canvas.width; x += spacing) {
