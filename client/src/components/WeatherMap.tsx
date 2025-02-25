@@ -52,7 +52,8 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
     // Initialize particles for weather effects
     const initParticles = () => {
       particles = [];
-      const count = mode === 'precipitation' ? 100 : mode === 'wind' ? 50 : 0;
+      const count = (mode === 'precipitation' && weatherData?.precipitation > 0) ? 100 : 
+                    (mode === 'wind' && weatherData?.windSpeed > 5) ? 50 : 0;
 
       for (let i = 0; i < count; i++) {
         particles.push({
@@ -105,26 +106,38 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
           const dy = y - pos.y;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
+          // Only show effects for rain or high wind
+          let shouldShow = false;
+          let color;
           let intensity = Math.max(0, 1 - (dist / (radius * zoom)));
 
-          // Color based on mode
-          let color;
           switch (mode) {
             case 'precipitation':
-              color = `rgba(0,128,255,${intensity * 0.7})`;
+              // Only show if there's precipitation
+              if (weatherData?.precipitation > 0) {
+                shouldShow = true;
+                color = `rgba(0,128,255,${intensity * 0.7})`;
+              }
               break;
             case 'wind':
-              color = `rgba(128,255,128,${intensity * 0.7})`;
+              // Only show if wind speed > 5mph
+              if (weatherData?.windSpeed > 5) {
+                shouldShow = true;
+                color = `rgba(128,255,128,${intensity * 0.7})`;
+              }
               break;
             case 'temperature':
               color = `rgba(255,128,0,${intensity * 0.7})`;
+              shouldShow = true;
               break;
           }
 
-          ctx.fillStyle = color;
-          ctx.beginPath();
-          ctx.arc(x, y, 1, 0, Math.PI * 2);
-          ctx.fill();
+          if (shouldShow) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(x, y, 1, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
       }
 
