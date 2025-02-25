@@ -6,6 +6,12 @@ import { CloudRain, Wind, Thermometer, Maximize } from 'lucide-react';
 interface WeatherMapProps {
   lat: number;
   lon: number;
+  weather: {
+    current: {
+      precipitation?: number;
+      windSpeed?: number;
+    };
+  };
 }
 
 type MapMode = 'precipitation' | 'wind' | 'temperature';
@@ -52,8 +58,8 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
     // Initialize particles for weather effects
     const initParticles = () => {
       particles = [];
-      const count = (mode === 'precipitation' && weatherData?.precipitation > 0) ? 100 : 
-                    (mode === 'wind' && weatherData?.windSpeed > 5) ? 50 : 0;
+      const count = (mode === 'precipitation' && weather?.current?.precipitation > 0) ? 100 : 
+                    (mode === 'wind' && weather?.current?.windSpeed > 5) ? 50 : 0;
 
       for (let i = 0; i < count; i++) {
         particles.push({
