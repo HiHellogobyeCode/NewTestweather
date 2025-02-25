@@ -6,20 +6,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/weather', async (req, res) => {
     try {
       const { lat, lon } = req.query;
-      
-      // Fetch weather data from Open-Meteo
-      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
-      
+
+      // Fetch weather data from Open-Meteo with daily forecast
+      const weatherUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=auto`;
+
       const weatherRes = await fetch(weatherUrl);
       const weatherData = await weatherRes.json();
-      
+
       // Get location name from OpenStreetMap
       const geoUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10`;
       const geoRes = await fetch(geoUrl, {
         headers: { 'User-Agent': 'DotMatrixWeather/1.0' }
       });
       const geoData = await geoRes.json();
-      
+
       // Map weather codes to conditions
       const getCondition = (code: number) => {
         if (code === 0) return 'Clear';
@@ -28,7 +28,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if ([71,73,75,77,85,86].includes(code)) return 'Snow';
         return 'Clear';
       };
-      
+
       // Format response
       const response = {
         location: geoData.address.city || 
@@ -46,9 +46,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           time,
           temp: weatherData.hourly.temperature_2m[i],
           condition: getCondition(weatherData.hourly.weather_code[i])
+        })),
+        daily: weatherData.daily.time.map((time: string, i: number) => ({
+          date: time,
+          maxTemp: weatherData.daily.temperature_2m_max[i],
+          minTemp: weatherData.daily.temperature_2m_min[i],
+          condition: getCondition(weatherData.daily.weather_code[i]),
+          precipProb: weatherData.daily.precipitation_probability_max[i]
         }))
       };
-      
+
       res.json(response);
     } catch (err) {
       res.status(500).json({ error: 'Failed to fetch weather data' });
