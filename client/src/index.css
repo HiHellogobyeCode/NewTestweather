@@ -14,13 +14,34 @@
 
 @keyframes glow {
   0%, 100% { 
-    text-shadow: 0 0 5px rgba(255,255,255,0.8);
+    text-shadow: 0 0 3px rgba(255,255,255,0.5);
   }
   50% { 
-    text-shadow: 0 0 15px rgba(255,255,255,0.8);
+    text-shadow: 0 0 8px rgba(255,255,255,0.5);
   }
 }
 
 .text-glow {
   animation: glow 2s ease-in-out infinite;
+}
+
+.text-glow-subtle {
+  animation: glow 3s ease-in-out infinite;
+  opacity: 0.9;
+}
+
+/* Enhanced frosted glass effect */
+.backdrop-blur-lg {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.backdrop-blur-md {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.backdrop-blur-sm {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
