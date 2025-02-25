@@ -152,7 +152,7 @@ export default function WeatherInfo({
             </div>
           </Card>
 
-          {location && <WeatherMap lat={location.lat} lon={location.lon} />}
+          {location && <WeatherMap lat={location.lat} lon={location.lon} weather={weather} />}
         </div>
 
         {/* 7-day forecast */}

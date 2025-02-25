@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather App</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f7f7f7;
+        }
+        h1 {
+            color: #0066cc;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .weather-form {
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0055aa;
+        }
+        .weather-result {
+            background-color: #f0f8ff;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+        }
+        .api-info {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        .endpoint {
+            background-color: #eee;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Weather App</h1>
+        
+        <div class="weather-form">
+            <div class="form-group">
+                <label for="location">Enter Location:</label>
+                <input type="text" id="location" placeholder="e.g., London, New York, Tokyo">
+            </div>
+            <button id="get-weather">Get Weather</button>
+        </div>
+        
+        <div id="weather-result" class="weather-result">
+            <h2>Weather in <span id="result-location">Location</span></h2>
+            <p><strong>Temperature:</strong> <span id="result-temp">--</span>°<span id="result-unit">C</span></p>
+            <p><strong>Condition:</strong> <span id="result-condition">--</span></p>
+            <p><strong>Humidity:</strong> <span id="result-humidity">--</span>%</p>
+            <p><strong>Wind Speed:</strong> <span id="result-wind">--</span> km/h</p>
+            <p><strong>Last Updated:</strong> <span id="result-time">--</span></p>
+        </div>
+        
+        <div class="api-info">
+            <h3>API Information</h3>
+            <p>You can also access the weather data directly through our API:</p>
+            <p><span class="endpoint">GET /api/weather?location=CityName</span></p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('get-weather').addEventListener('click', async () => {
+            const location = document.getElementById('location').value;
+            
+            if (!location) {
+                alert('Please enter a location');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/weather?location=${encodeURIComponent(location)}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('result-location').textContent = data.location;
+                    document.getElementById('result-temp').textContent = data.temperature;
+                    document.getElementById('result-unit').textContent = data.unit === 'celsius' ? 'C' : 'F';
+                    document.getElementById('result-condition').textContent = data.condition;
+                    document.getElementById('result-humidity').textContent = data.humidity;
+                    document.getElementById('result-wind').textContent = data.windSpeed;
+                    document.getElementById('result-time').textContent = new Date(data.timestamp).toLocaleString();
+                    
+                    document.getElementById('weather-result').style.display = 'block';
+                } else {
+                    alert(`Error: ${data.error || 'Failed to get weather data'}`);
+                }
+            } catch (error) {
+                alert('Error connecting to the server. Please try again.');
+                console.error(error);
+            }
+        });
+    </script>
+</body>
+</html>
