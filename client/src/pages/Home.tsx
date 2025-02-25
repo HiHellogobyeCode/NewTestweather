@@ -93,7 +93,7 @@ export default function Home() {
     <div className="min-h-screen bg-black text-gray-300 relative overflow-hidden">
       <DotMatrixDisplay />
 
-      <div className="relative z-10 container mx-auto px-4 py-12 min-h-screen flex items-center justify-center">
+      <div className="relative z-10 container mx-auto px-4 py-12">
         <WeatherInfo 
           weather={weather}
           isLoading={isLoading}
@@ -102,6 +102,7 @@ export default function Home() {
           onUnitChange={setUnit}
           onSearch={handleSearch}
           onLocationSelect={handleLocationSelect}
+          location={location}
         />
       </div>
     </div>
