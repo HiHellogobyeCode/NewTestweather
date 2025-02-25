@@ -1,0 +1,55 @@
+help me make a dot matrix style websiteRetro Dot Matrix Display
+* Created a custom dot matrix effect for all text and UI elements
+* Added glowing effects that pulse subtly to mimic vintage displays
+* Implemented a grid-based background with tiny dots for that authentic matrix look
+1. Interactive Weather Effects
+   * Dynamic animated weather effects based on current conditions:
+      * Rain effect with animated droplets for rainy weather
+      * Snow effect with gently falling snowflakes
+      * Cloud animations for cloudy conditions
+      * Sun effect with rotating rays for sunny days
+      * Lightning flashes for thunderstorms
+2. Centered Temperature Display
+   * Large, prominent temperature display in the center of the screen
+   * Custom dot matrix temperature component with glowing effect
+   * Temperature unit indicator (°C/°F) beneath the main temperature
+3. Temperature Unit Toggle
+   * Added ability to switch between Celsius and Fahrenheit
+   * Settings menu with temperature unit selector
+   * Persistent unit choice that applies across the entire app
+Enhanced Features
+1. Hourly Forecast Tab
+   * Added a new tab with 24-hour weather forecast
+   * Each hour shows temperature, conditions, and precipitation chance
+   * Current hour highlighted for easy reference
+2. Weather Alerts
+   * Dynamic weather alerts based on current conditions
+   * Alert severity indicators with color coding
+   * Interactive alert detail view with dot matrix styling
+3. Improved Nearby Weather
+   * Redesigned nearby locations view with dot matrix styling
+   * Interactive location cards with weather data for each place
+   * Distance indicators showing how far each location is
+4. Dot Matrix Map
+   * Redesigned the map view with dot matrix overlay
+   * Glowing 10-mile radius circle
+   * Matrix effect applied to map for consistent styling
+5. Settings Menu
+   * Added comprehensive settings menu with:
+      * Temperature unit toggle (°C/°F)
+      * Weather effects toggle
+      * Refresh data option
+      * About section with app info
+Technical Improvements
+1. Optimized Data Caching
+   * Implemented smart caching for weather data
+   * Reduced API calls for better performance and reliability
+2. Improved Animations
+   * Added smooth animations and transitions throughout the app
+   * Interactive button feedback with haptics
+3. Enhanced Weather Model
+   * Updated view models to support both temperature units
+   * Added sample hourly forecast data
+   * Implemented weather alert system also here is the key private let apiKey = "BBOQcVP6XQFPA7ZL9Z3G9xyQtVbXDOgz"
+
+Edit
