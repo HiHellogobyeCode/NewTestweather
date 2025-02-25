@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CloudRain, Wind, Thermometer } from 'lucide-react';
+import { CloudRain, Wind, Thermometer, Maximize } from 'lucide-react';
 
 interface WeatherMapProps {
   lat: number;
@@ -17,6 +17,12 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  // Reset view function
+  const resetView = () => {
+    setZoom(1);
+    setOffset({ x: 0, y: 0 });
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -41,10 +47,29 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
       maxLon: -66.934570
     };
 
+    let particles: Array<{x: number; y: number; speed: number; angle: number}> = [];
+
+    // Initialize particles for weather effects
+    const initParticles = () => {
+      particles = [];
+      const count = mode === 'precipitation' ? 100 : mode === 'wind' ? 50 : 0;
+
+      for (let i = 0; i < count; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height,
+          speed: Math.random() * 2 + 1,
+          angle: mode === 'wind' ? Math.PI / 4 : Math.PI / 2 // Wind direction or straight down
+        });
+      }
+    };
+
+    initParticles();
+
     // Convert lat/lon to canvas coordinates
     const latLonToCanvas = (lat: number, lon: number) => {
       const x = ((lon - USA.minLon) / (USA.maxLon - USA.minLon)) * canvas.width;
-      const y = ((USA.maxLat - lat) / (USA.maxLat - USA.minLat)) * canvas.height;
+      const y = canvas.height - ((lat - USA.minLat) / (USA.maxLat - USA.minLat)) * canvas.height;
       return { x, y };
     };
 
@@ -52,8 +77,8 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
     const drawMatrix = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const spacing = 8;
-      const radius = 80;
+      const spacing = 6; // Smaller spacing for more detailed map
+      const radius = 120; // Larger radius for effect
 
       // Apply zoom and pan transformation
       ctx.save();
@@ -63,10 +88,12 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
       // Current location marker
       const pos = latLonToCanvas(lat, lon);
 
+      // Draw base map dots
       for (let x = 0; x < canvas.width; x += spacing) {
         for (let y = 0; y < canvas.height; y += spacing) {
+          // Convert canvas coordinates back to lat/lon
           const currentLon = USA.minLon + (x / canvas.width) * (USA.maxLon - USA.minLon);
-          const currentLat = USA.maxLat - (y / canvas.height) * (USA.maxLat - USA.minLat);
+          const currentLat = USA.minLat + ((canvas.height - y) / canvas.height) * (USA.maxLat - USA.minLat);
 
           // Skip points outside the USA boundaries
           if (currentLat < USA.minLat || currentLat > USA.maxLat || 
@@ -101,6 +128,30 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
         }
       }
 
+      // Update and draw weather effect particles
+      particles.forEach(p => {
+        p.x += Math.cos(p.angle) * p.speed;
+        p.y += Math.sin(p.angle) * p.speed;
+
+        if (p.y > canvas.height) p.y = 0;
+        if (p.x > canvas.width) p.x = 0;
+        if (p.x < 0) p.x = canvas.width;
+
+        ctx.beginPath();
+        if (mode === 'precipitation') {
+          ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+          ctx.lineWidth = 1;
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x, p.y + 4);
+        } else if (mode === 'wind') {
+          ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+          ctx.lineWidth = 1;
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x + Math.cos(p.angle) * 8, p.y + Math.sin(p.angle) * 8);
+        }
+        ctx.stroke();
+      });
+
       // Draw current location marker
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
@@ -116,14 +167,19 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
 
     const handleMouseDown = (e: MouseEvent) => {
       setIsDragging(true);
-      setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
+      const rect = canvas.getBoundingClientRect();
+      setDragStart({ 
+        x: e.clientX - offset.x - rect.left,
+        y: e.clientY - offset.y - rect.top
+      });
     };
 
     const handleMouseMove = (e: MouseEvent) => {
       if (isDragging) {
+        const rect = canvas.getBoundingClientRect();
         setOffset({
-          x: e.clientX - dragStart.x,
-          y: e.clientY - dragStart.y
+          x: e.clientX - dragStart.x - rect.left,
+          y: e.clientY - dragStart.y - rect.top
         });
       }
     };
@@ -188,6 +244,14 @@ export default function WeatherMap({ lat, lon }: WeatherMapProps) {
           >
             <Thermometer className="h-4 w-4 mr-2" />
             TEMP
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetView}
+            className="font-mono backdrop-blur-sm bg-gray-900/30 border-gray-700/50"
+          >
+            <Maximize className="h-4 w-4" />
           </Button>
         </div>
       </div>
